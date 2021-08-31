@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Arrays;
 
 @Component
 public class MovieDao extends AbstractMFlixDao {
@@ -117,12 +118,17 @@ public class MovieDao extends AbstractMFlixDao {
      * @return List of matching Document objects.
      */
     public List<Document> getMoviesByCountry(String... country) {
-
-        Bson queryFilter = new Document();
-        Bson projection = new Document();
-        //TODO> Ticket: Projection - implement the query and projection required by the unit test
+    
+    	Bson queryFilter = Filters.in("countries", country);
+        Bson projection = new Document( "title", 1);
         
         List<Document> movies = new ArrayList<>();
+        
+        moviesCollection
+        .find(queryFilter)
+        .projection(projection)
+        .iterator()
+        .forEachRemaining(movies::add);
 
         return movies;
     }
@@ -163,8 +169,8 @@ public class MovieDao extends AbstractMFlixDao {
      * @return List of documents sorted by sortKey that match the cast selector.
      */
     public List<Document> getMoviesByCast(String sortKey, int limit, int skip, String... cast) {
-        Bson castFilter = null;
-        Bson sort = null;
+        Bson castFilter = Filters.in("cast", cast);
+        Bson sort = Sorts.descending(sortKey);
         //TODO> Ticket: Subfield Text Search - implement the expected cast
         // filter and sort
         List<Document> movies = new ArrayList<>();
@@ -271,13 +277,21 @@ public class MovieDao extends AbstractMFlixDao {
         Bson facetStage = buildFacetStage();
         // Using a LinkedList to ensure insertion order
         List<Bson> pipeline = new LinkedList<>();
+        
+        pipeline.add(matchStage);
+        pipeline.add(sortStage);
+        pipeline.add(skipStage);
+        pipeline.add(limitStage);
+        
+        pipeline.add(facetStage);
+ 
+        
 
         // TODO > Ticket: Faceted Search - build the aggregation pipeline by adding all stages in the
         // correct order
         // Your job is to order the stages correctly in the pipeline.
         // Starting with the `matchStage` add the remaining stages.
-        pipeline.add(matchStage);
-
+     
         moviesCollection.aggregate(pipeline).iterator().forEachRemaining(movies::add);
         return movies;
     }
